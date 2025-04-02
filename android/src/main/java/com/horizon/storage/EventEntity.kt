@@ -9,4 +9,9 @@ data class EventEntity(
   val timestamp: Long,
   val failureCount: Int,
   val status: EventStatus
-)
+) {
+
+  override fun toString(): String {
+    return "EventEntity(eventId='$eventId', batchId=$batchId, failureCount=$failureCount)"
+  }
+}

@@ -2,5 +2,6 @@ package com.horizon.entity
 
 enum class EventStatus {
   PENDING,
-  FAILED
+  FAILED,
+  IN_PROGRESS
 }

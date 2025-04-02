@@ -16,6 +16,7 @@ class HorizonModule(reactContext: ReactApplicationContext) :
   // See https://reactnative.dev/docs/native-modules-android
   @ReactMethod
   fun multiply(a: Double, b: Double, promise: Promise) {
+    HorizonSDKSimulator.test()
     promise.resolve(a * b)
   }
 

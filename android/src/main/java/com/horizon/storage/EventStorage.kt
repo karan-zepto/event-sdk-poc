@@ -1,11 +1,11 @@
 package com.horizon.storage
 
 import com.horizon.entity.Event
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 
 interface EventStorage {
-  val eventCount: StateFlow<Int>
-  val hasFailedEvents: StateFlow<Boolean>
+  val eventCount: Flow<Int>
+  val hasFailedEvents: Flow<Boolean>
 
   suspend fun storeEvent(event: Event)
 

@@ -5,11 +5,14 @@ import com.horizon.entity.HorizonConfig
 import com.horizon.network.NetworkClient
 import com.horizon.storage.EventStorage
 import com.horizon.utility.BatchHelper
+import com.horizon.utility.PrintLogger
+import kotlin.math.log
 
 class EventProcessor(
   private val config: HorizonConfig,
   private val networkClient: NetworkClient,
-  private val eventStorage: EventStorage
+  private val eventStorage: EventStorage,
+  private val logger: PrintLogger
 ) {
 
   suspend fun processBatch(): Boolean {
@@ -24,7 +27,6 @@ class EventProcessor(
     }
 
     val batch = EventBatch(
-      batchId,
       eventsToSend
     )
 
@@ -42,9 +44,10 @@ class EventProcessor(
   suspend fun processFailedEvents(): Boolean {
     val eventsToRetry = eventStorage.getFailedEvents(config.batchSize)
 
+    logger.log("EventProcessor", "Processing failed events: ${eventsToRetry.size}, batches = ${eventsToRetry.map { it.batchId }.distinct()}")
     if (eventsToRetry.isEmpty()) return false
 
-    val batch = EventBatch(BatchHelper.nextBatchId(), eventsToRetry)
+    val batch = EventBatch(eventsToRetry)
 
     val result = networkClient.sendEvents(batch)
 
@@ -57,6 +60,5 @@ class EventProcessor(
 
   private suspend fun handleFailedBatch(batch: EventBatch) {
     eventStorage.markEventsFailed(batch.events)
-    eventStorage.removeEvents(batch.events)
   }
 }
