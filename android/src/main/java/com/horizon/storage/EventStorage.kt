@@ -9,11 +9,13 @@ interface EventStorage {
 
   suspend fun storeEvent(event: Event)
 
-  suspend fun getPendingEvents(limit: Int): List<Event>
+  suspend fun updateBatchIdForEvents(eventIds: List<String>, batchId: Int)
 
-  suspend fun removeEvents(events: List<Event>)
+  suspend fun getPendingEvents(limit: Int): List<EventEntity>
 
-  suspend fun markEventsFailed(events: List<Event>)
+  suspend fun removeEvents(events: List<EventEntity>)
 
-  suspend fun getFailedEvents(limit: Int): List<Event>
+  suspend fun markEventsFailed(events: List<EventEntity>)
+
+  suspend fun getFailedEvents(limit: Int): List<EventEntity>
 }

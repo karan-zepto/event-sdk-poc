@@ -4,7 +4,7 @@ import com.horizon.entity.EventBatch
 import com.horizon.entity.HorizonConfig
 import com.horizon.network.NetworkClient
 import com.horizon.storage.EventStorage
-import java.util.UUID
+import com.horizon.utility.BatchHelper
 
 class EventProcessor(
   private val config: HorizonConfig,
@@ -13,14 +13,22 @@ class EventProcessor(
 ) {
 
   suspend fun processBatch(): Boolean {
-    val eventsToSend = eventStorage.getPendingEvents(config.batchSize)
+    var eventsToSend = eventStorage.getPendingEvents(config.batchSize)
 
     if (eventsToSend.isEmpty()) return false
 
+    val batchId = BatchHelper.nextBatchId()
+
+    eventsToSend = eventsToSend.map { event ->
+      event.copy(batchId = batchId)
+    }
+
     val batch = EventBatch(
-      UUID.randomUUID().toString(),
+      batchId,
       eventsToSend
     )
+
+    eventStorage.updateBatchIdForEvents(eventsToSend.map { it.eventId }, batchId)
 
     val result = networkClient.sendEvents(batch)
 
@@ -36,7 +44,7 @@ class EventProcessor(
 
     if (eventsToRetry.isEmpty()) return false
 
-    val batch = EventBatch(UUID.randomUUID().toString(), eventsToRetry)
+    val batch = EventBatch(BatchHelper.nextBatchId(), eventsToRetry)
 
     val result = networkClient.sendEvents(batch)
 
