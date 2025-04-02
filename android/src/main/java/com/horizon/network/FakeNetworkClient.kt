@@ -37,7 +37,7 @@ class FakeNetworkClient(
   fun printItems() {
 
     var sorted = items.sorted()
-    var supposed = 100
+    var supposed = 10000
     var missing = mutableListOf<Int>()
 
     for(i in 1..supposed){

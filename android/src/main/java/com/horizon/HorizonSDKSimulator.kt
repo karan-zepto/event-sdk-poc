@@ -20,7 +20,7 @@ object HorizonSDKSimulator {
 
   fun test() {
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    val config = HorizonConfig(2, 10, 2000, 2000)
+    val config = HorizonConfig(30, 30, 2000, 500)
     val logger = PrintLogger()
 
     logger.log("HorizonSDKSimulator", "HorizonSDKSimulator started")
@@ -35,8 +35,8 @@ object HorizonSDKSimulator {
     manager.initialise()
 
     scope.launch {
-      for (i in 1..100) {
-        delay((Math.random() * 1000).toLong())
+      for (i in 1..10000) {
+        delay((Math.random() * 16).toLong())
         manager.track(Event("$i"))
       }
 

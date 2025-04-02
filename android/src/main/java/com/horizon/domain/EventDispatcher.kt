@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlin.math.log
@@ -28,32 +30,18 @@ class EventDispatcher(
 ) {
 
   private val processBatchTrigger = Channel<Unit>(Channel.CONFLATED)
-  private val batchTriggerFlow = processBatchTrigger.receiveAsFlow()
-
   private val failedBatchTrigger = Channel<Unit>(Channel.CONFLATED)
-  private val failedBatchTriggerFlow = failedBatchTrigger.receiveAsFlow()
+  private val combined =
+    merge(processBatchTrigger.receiveAsFlow().map { EventProcessorSignal.PROCESS_BATCH },
+      failedBatchTrigger.receiveAsFlow().map { EventProcessorSignal.PROCESS_FAILED_BATCH })
 
   fun initialize() {
     observeBatchTrigger()
-    observeFailedTrigger()
 
     setupRetryProcessing()
 
     setupEventCountTrigger()
     setupTimerTrigger()
-
-    scope.launch {
-      eventStorage.eventCount.debounce(30).collectLatest {
-          logger.log("EventDispatcher", "Event count: $it")
-      }
-
-    }
-
-    scope.launch {
-      eventStorage.hasFailedEvents.collectLatest {
-        logger.log("EventDispatcher", "Has Failed Events: $it")
-      }
-    }
   }
 
   private fun setupRetryProcessing() {
@@ -81,32 +69,28 @@ class EventDispatcher(
     for (i in 1..config.maxParallelRequests) {
       scope.launch {
         logger.log("EventDispatcher", "Batch Observer setup $i")
-        batchTriggerFlow.collect {
-          eventProcessor.processBatch()
-        }
-      }
-    }
-  }
 
-  private fun observeFailedTrigger() {
-      for (i in 1..config.maxParallelRequests) {
-        logger.log("EventDispatcher", "Failed Observer setup $i")
-        scope.launch {
-          failedBatchTriggerFlow.collect {
-            while (true) {
-              logger.log("EventDispatcher", "Failed Batch Observer process")
-              val success = eventProcessor.processFailedEvents()
+        combined.collect { signal ->
+          when (signal) {
+            EventProcessorSignal.PROCESS_BATCH -> eventProcessor.processBatch()
+            EventProcessorSignal.PROCESS_FAILED_BATCH -> {
+              while (true) {
+                logger.log("EventDispatcher", "Failed Batch Observer process")
+                val success = eventProcessor.processFailedEvents()
 
-              if (!success) {
-                delay(config.retryIntervalInMs)
-              }
+                if (!success) {
+                  delay(config.retryIntervalInMs)
+                }
 
-              if (!eventStorage.hasFailedEvents.first() || !networkMonitor.isConnected.value) {
-                break
+                if (!eventStorage.hasFailedEvents.first() || !networkMonitor.isConnected.value) {
+                  break
+                }
               }
             }
           }
+
         }
+      }
     }
   }
 
