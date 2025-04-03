@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface EventStorage {
   val eventCount: Flow<Int>
+  val pendingCount: Flow<Int>
   val hasFailedEvents: Flow<Boolean>
 
   suspend fun storeEvent(event: Event)

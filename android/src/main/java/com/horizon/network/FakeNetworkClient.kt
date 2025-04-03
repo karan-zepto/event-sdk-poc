@@ -1,11 +1,14 @@
 package com.horizon.network
 
 import com.horizon.entity.EventBatch
+import com.horizon.utility.FakeNetworkMonitor
 import com.horizon.utility.PrintLogger
+import com.horizon.utils.Tracer
 import kotlinx.coroutines.delay
 
 class FakeNetworkClient(
-  private val logger: PrintLogger
+  private val logger: PrintLogger,
+  private val networkMonitor: FakeNetworkMonitor
 ) : NetworkClient {
 
   private val items = mutableListOf<Int>()
@@ -13,7 +16,7 @@ class FakeNetworkClient(
   override suspend fun sendEvents(batch: EventBatch): Result<Unit> {
     delay(300)
 
-    if (Math.random() < 0.8) {
+    if (Math.random() < 0.8 && networkMonitor.isConnected.value) {
       logger.log(
         "FakeNetworkClient",
         "Trying to send batches: count = ${batch.events.size}, batches = ${
@@ -34,10 +37,10 @@ class FakeNetworkClient(
   }
 
 
-  fun printItems() {
+  suspend fun printItems() {
 
     var sorted = items.sorted()
-    var supposed = 10000
+    var supposed =5000
     var missing = mutableListOf<Int>()
 
     for(i in 1..supposed){
@@ -46,5 +49,6 @@ class FakeNetworkClient(
       }
     }
     logger.log("FakeNetworkClient", "missing items ${missing}")
+    Tracer.printStats()
   }
 }

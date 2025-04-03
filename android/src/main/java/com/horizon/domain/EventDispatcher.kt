@@ -8,7 +8,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -18,7 +17,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlin.math.log
 
 class EventDispatcher(
   private val config: HorizonConfig,
@@ -72,10 +70,13 @@ class EventDispatcher(
 
         combined.collect { signal ->
           when (signal) {
-            EventProcessorSignal.PROCESS_BATCH -> eventProcessor.processBatch()
+            EventProcessorSignal.PROCESS_BATCH -> {
+              logger.log("EventDispatcher", "Process NEW $i")
+              eventProcessor.processBatch()
+            }
             EventProcessorSignal.PROCESS_FAILED_BATCH -> {
+              logger.log("EventDispatcher", "Process OLD $i")
               while (true) {
-                logger.log("EventDispatcher", "Failed Batch Observer process")
                 val success = eventProcessor.processFailedEvents()
 
                 if (!success) {
@@ -99,7 +100,7 @@ class EventDispatcher(
       logger.log("EventDispatcher", "Counter setup")
       eventStorage.eventCount
         .filter {
-          it >= config.batchSize
+          it >= eventProcessor.getBatchSize()
         }
         .collect {
           triggerBatchProcessing()

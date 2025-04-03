@@ -6,7 +6,7 @@ import com.horizon.network.NetworkClient
 import com.horizon.storage.EventStorage
 import com.horizon.utility.BatchHelper
 import com.horizon.utility.PrintLogger
-import kotlin.math.log
+import kotlinx.coroutines.flow.first
 
 class EventProcessor(
   private val config: HorizonConfig,
@@ -16,8 +16,9 @@ class EventProcessor(
 ) {
 
   suspend fun processBatch(): Boolean {
-    var eventsToSend = eventStorage.getPendingEvents(config.batchSize)
+    var eventsToSend = eventStorage.getPendingEvents(getBatchSize())
 
+    logger.log("EventProcessor", "Processing new events")
     if (eventsToSend.isEmpty()) return false
 
     val batchId = BatchHelper.nextBatchId()
@@ -42,9 +43,9 @@ class EventProcessor(
   }
 
   suspend fun processFailedEvents(): Boolean {
-    val eventsToRetry = eventStorage.getFailedEvents(config.batchSize)
+    val eventsToRetry = eventStorage.getFailedEvents(getBatchSize())
 
-    logger.log("EventProcessor", "Processing failed events: ${eventsToRetry.size}, batches = ${eventsToRetry.map { it.batchId }.distinct()}")
+    logger.log("EventProcessor", "Processing failed events")
     if (eventsToRetry.isEmpty()) return false
 
     val batch = EventBatch(eventsToRetry)
@@ -60,5 +61,12 @@ class EventProcessor(
 
   private suspend fun handleFailedBatch(batch: EventBatch) {
     eventStorage.markEventsFailed(batch.events)
+  }
+
+  suspend fun getBatchSize(): Int {
+    if(eventStorage.pendingCount.first() > config.batchSize * 6){
+      return config.maxBatchSize
+    }
+    return config.batchSize
   }
 }
